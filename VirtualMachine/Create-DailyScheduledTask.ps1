@@ -1,5 +1,4 @@
 Param(
-[Parameter(Mandatory=$false)][string]$computer, #not needed if script is ran on target machine
 [Parameter(Mandatory=$true)][string]$TaskName, #name of the scheduled task
 [Parameter(Mandatory=$true)][string]$Executable, #name of the executable to be ran (in some cases this may need to be the full path to the executable)
 [Parameter(Mandatory=$false)][string]$Arguments,  #optional, passes arguments that are applicable to the application.
@@ -11,8 +10,8 @@ Param(
 [Parameter(Mandatory=$true)][string]$Interval,  # expects a number between 1-59 for M or 1-23 for hours
 [Parameter(Mandatory=$true)][string]$IntervalUnits  # H for hours or  M for minutes
 )
-
-if($computer -eq $null){$computer = $env:COMPUTERNAME}
+  
+$computer = $env:COMPUTERNAME
 
 $xmlTemplate = "<?xml version='1.0' encoding='UTF-16'?>
 <Task version='1.2' xmlns='http://schemas.microsoft.com/windows/2004/02/mit/task'>
@@ -76,10 +75,19 @@ $registrationDateTime = [DateTime]::Now.ToString("yyyy-MM-dd") + "T" + [DateTime
 $startDateTime = [DateTime]::Now.ToString("yyyy-MM-dd") + "T" + $startTime + ":00"
 $xml = $xmlTemplate -f $registrationDateTime, $runAs, $startDateTime, $enable, $Executable, $arguments, $workingDirectory, $interval, $intervalUnits
 
+try{
 $sch = new-object -ComObject("Schedule.Service")
 $sch.Connect($computer)
 $task = $sch.NewTask($null)
 $task.XmlText = $xml
-
 $createOrUpdateFlag = 6
 $sch.GetFolder("\").RegisterTaskDefinition($taskName, $task, $createOrUpdateFlag, $runAs, $runAsPassword, $null, $null) | out-null   
+}
+catch{
+  write-host "Could not create Scheduled task:" $error
+  exit 1
+}
+
+
+exit 0
+
